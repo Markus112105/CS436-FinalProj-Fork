@@ -1,0 +1,31 @@
+# Local Python environments and caches.
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+.cache/
+data/
+
+# LaTeX build files; keep the report PDF tracked.
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Downloaded data and model weights.
+cifar-10-batches-py/
+cifar-10-python.tar.gz
+*.pt
+*.pth
+
+# Local credentials and configuration.
+.env
+.env.*
+!.env.example
+
+# Local working plan; final documentation belongs in README and the paper.
+/PROJECT_PLAN.md

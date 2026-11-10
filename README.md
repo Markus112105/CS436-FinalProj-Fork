@@ -1,40 +1,53 @@
-# What do CNNs Learn in the First Layer and Why? A Linear Systems Perspective
+# CS 436 Final Project
 
-This repository is the official implementation of of our paper ["What do CNNs Learn in the First Layer and Why? A Linear Systems Perspective"](https://arxiv.org/abs/2206.02454), by Rhea Chowers and Yair Weiss, published in [ICML 2023](https://proceedings.mlr.press/v202/chowers23a.html).
+**Question:** Does adding momentum to SGD change VGG11-BN first-layer energy profiles, CIFAR-10 accuracy, and training time?
 
+## Experiment
 
-![fig](figures/true_vs_random.png)
-<p align="center" style="text-align: center;">VGG trained with true and random labels learn similar energy profiles in their first layer.</p>
+1. Train VGG11-BN with SGD (momentum 0) and SGD with momentum 0.9 for 30 epochs across three matched seeds: six runs total.
+2. Compare first-layer energy profiles, training-loss curves, test accuracy, and training time.
+3. Present the findings in a four-page IEEE report.
 
-# Summary
-In this paper, we adopt the linear systems perspective and consider the first layer as a filter bank and measure the sensitivity of the bank to different spatial
-frequencies, calculated using PCA of image patches. We name the profiles of sensitivities the **"energy profile"** and use it to compute the correlation between the first layers learnt by different models and in various settings.
+The [experiment notebook](CNNs-First-Layer/optimizer_experiment.ipynb) contains the setup and six-run configuration scaffold; training and analysis are the next implementation steps.
 
-We show that trained networks learn consistent representations that are far from their initialization despite the fact that CNNs with commonly used architectures can be trained with **fixed, random filters** in the first layer and still yield comparable performance to full learning. We also show that the same energy profile is obtained when the network is trained to predict **random labels**. We then show that under realistic assumptions on the statistics of the input and labels, consistency also occurs in simple, linear CNNs, and derive an analytical form for its energy profile. We show that as the number of iterations goes to infinity, this profile takes the form of a first layer that performs whitening of the input image patches. Finally, we show that the analytical formula which we derived for linear CNNs gives an excellent fit to the energy profile of real-world CNNs as well, when trained with either **true or random labels**.
+## Requirements
 
-![fig](figures/formula_fit.png)
-<p align="center" style="text-align: center;">Examples of fitting the formula to different networks trained on different datasets (correlation in parenthesis). Overall, the formula captures the trend learned in the first layer of the networks.</p>
+Python 3.14, `uv`, and VS Code with Python/Jupyter notebook support. The project uses PyTorch, torchvision, NumPy, Matplotlib, tqdm, ipykernel, and nbclient; the setup command pins the tested package versions.
 
-# Code
-This repository contains two notebooks - one for fitting the theoretical profile to energy profiles of trained CNNs, and the other for comparing true and random label trained models. The utils file contains code for calculating the energy profile.
+## Run locally
 
-# Citation
+From the repository root, set up Python 3.14:
+
+```sh
+uv venv --python 3.14 .venv
+uv pip install --python .venv/bin/python \
+  torch==2.14.1 torchvision==0.29.1 numpy==2.5.3 \
+  matplotlib==3.11.2 tqdm==4.70.1 ipykernel==7.3.0 nbclient==0.11.0
 ```
 
-@InProceedings{pmlr-v202-chowers23a,
-  title = 	 {What do {CNN}s Learn in the First Layer and Why? {A} Linear Systems Perspective},
-  author =       {Chowers, Rhea and Weiss, Yair},
-  booktitle = 	 {Proceedings of the 40th International Conference on Machine Learning},
-  pages = 	 {6115--6139},
-  year = 	 {2023},
-  editor = 	 {Krause, Andreas and Brunskill, Emma and Cho, Kyunghyun and Engelhardt, Barbara and Sabato, Sivan and Scarlett, Jonathan},
-  volume = 	 {202},
-  series = 	 {Proceedings of Machine Learning Research},
-  month = 	 {23--29 Jul},
-  publisher =    {PMLR},
-  pdf = 	 {https://proceedings.mlr.press/v202/chowers23a/chowers23a.pdf},
-  url = 	 {https://proceedings.mlr.press/v202/chowers23a.html},
-}
+Run the tests:
 
-
+```sh
+.venv/bin/python -m unittest discover -s CNNs-First-Layer -p test_utils.py
 ```
+
+## Documentation
+
+The [report skeleton](docs/final_project_report.tex), [skeleton PDF](docs/final_project_report.pdf), [project requirements](docs/report_requirements.pdf), and [original paper](docs/original_paper.pdf) are in `docs/`. The skeleton has empty sections; the completed report must be four pages including references.
+
+Build the report from `docs/`:
+
+```sh
+pdflatex -interaction=nonstopmode -halt-on-error final_project_report.tex
+pdflatex -interaction=nonstopmode -halt-on-error final_project_report.tex
+```
+
+## Attribution and contributions
+
+Based on [Chowers and Weiss's code](https://github.com/RheaChowers/CNNs-First-Layer) for their [ICML 2023 paper](https://proceedings.mlr.press/v202/chowers23a.html).
+
+We initially forgot to fork and started in a separate repository; this fork preserves the original repository history and carries over our project work.
+
+**Markus Massina (GitHub: Markus112105):** project planning, baseline fixes and tests, local setup, and report skeleton.
+
+**Michael Truong (GitHub: Michael-Truong111):** planned contributions: optimizer experiment implementation, results analysis, and report revisions. Both partners must contribute their own work and commits.
