@@ -10,7 +10,8 @@ from utils import calc_energy_profile, fit_formula_to_model, get_dataloader, tra
 
 
 class BaselineTests(unittest.TestCase):
-    # Experiment tests start: verify the new momentum option on tiny synthetic data.
+    # ---------- added code ----------
+    # These tests verify the new momentum, timing, and evaluation options on tiny synthetic data.
     # These checks do not train VGG11 or run any of the six CIFAR-10 experiments.
     def test_momentum_matches_two_known_updates(self):
         # Two single-image batches reveal the accumulated gradient on step two.
@@ -81,7 +82,7 @@ class BaselineTests(unittest.TestCase):
         self.assertTrue(all(row['test_accuracy'] is not None for row in history))
         self.assertTrue(all(row['train_seconds'] >= 0 for row in history))
 
-    # new code end
+    # ---------- end added code ----------
     def test_cpu_metrics_include_partial_batches_and_separate_losses(self):
         # Zero inputs keep predictions fixed, so accuracy and loss are exact.
         model = torch.nn.Linear(2, 2)

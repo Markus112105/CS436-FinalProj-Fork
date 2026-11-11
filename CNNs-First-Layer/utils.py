@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from random import shuffle
-import time
+import time  # markus add
 
 import numpy as np
 import torch
@@ -114,11 +114,13 @@ def get_patch_pca(train_loader, num_images=10000):
     return components.flip(1), singular_values, image_count
 
 
-# TODO: support configurable SGD momentum for the experiment.
-# Experiment change: momentum defaults to zero so original notebook calls stay compatible.
+# ---------- added code ----------
+# momentum and eval_every_epoch are new arguments.
+# Their defaults keep the original notebook calls working unchanged.
 def train_model(model, train_loader, test_loader, num_epochs=100,
                 use_cuda=None, lr=0.01, device=None, momentum=0.0,
                 eval_every_epoch=True):
+# ---------- end added code ----------
     # An explicit device wins. The old flag still supports forcing CPU/CUDA;
     # otherwise prefer CUDA, then Apple MPS, then CPU.
     if device is None:
@@ -132,28 +134,30 @@ def train_model(model, train_loader, test_loader, num_epochs=100,
             device = 'cpu'
     device = torch.device(device)
     model.to(device)
-    # Experiment change: pass the selected momentum into the existing SGD optimizer.
+    # ---------- added code ----------
+    # Pass the selected momentum into the existing SGD optimizer.
     # Zero preserves the original SGD behavior; 0.9 accumulates past gradients.
     optimizer = torch.optim.SGD(
         (p for p in model.parameters() if p.requires_grad),
         lr=lr,
         momentum=momentum,
     )
-    # new code end
+    # ---------- end added code ----------
     criterion = torch.nn.CrossEntropyLoss()
     history = []
     pbar = tqdm(range(num_epochs), desc=f'Training ({device})')
     for epoch in pbar:
         model.train()
         train_loss = train_correct = train_count = 0
-        # TODO: measure completed training work, excluding test evaluation.
+        # ---------- added code ----------
+        # Time the training work only, excluding test evaluation.
         # GPU operations are asynchronous, so wait before starting the timer.
         if device.type == 'cuda':
             torch.cuda.synchronize(device)
         elif device.type == 'mps':
             torch.mps.synchronize()
         start_time = time.perf_counter()
-        # new code end
+        # ---------- end added code ----------
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad(set_to_none=True)
@@ -166,6 +170,7 @@ def train_model(model, train_loader, test_loader, num_epochs=100,
             train_correct += (logits.detach().argmax(1) == labels).sum().item()
             train_count += len(labels)
 
+        # ---------- added code ----------
         # Wait for the final training update before stopping the epoch timer.
         if device.type == 'cuda':
             torch.cuda.synchronize(device)
@@ -188,14 +193,14 @@ def train_model(model, train_loader, test_loader, num_epochs=100,
                     test_count += len(labels)
             test_loss_value = test_loss / test_count
             test_accuracy = test_correct / test_count
-        # new code end
+        # ---------- end added code ----------
         history.append({
             'epoch': epoch + 1,
             'train_loss': train_loss / train_count,
             'train_accuracy': train_correct / train_count,
             'test_loss': test_loss_value,
             'test_accuracy': test_accuracy,
-            'train_seconds': train_seconds,
+            'train_seconds': train_seconds,  # markus add
         })
         pbar.set_postfix(history[-1])
     return history
