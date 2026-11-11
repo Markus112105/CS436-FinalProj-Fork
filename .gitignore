@@ -26,4 +26,3 @@ cifar-10-python.tar.gz
 .env
 .env.*
 !.env.example
-/PROJECT_PLAN.md
