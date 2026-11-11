@@ -8,6 +8,10 @@
 2. Compare first-layer energy profiles, training-loss curves, test accuracy, and training time.
 3. Present the findings in a four-page IEEE report.
 
+## Results
+
+We trained all six runs in one Google Colab session on a Tesla T4 GPU. The measurements are in `results/` and the figure is [docs/energy_and_loss.pdf](docs/energy_and_loss.pdf).
+
 ## Requirements
 
 Python 3.14, `uv`, and VS Code with Python/Jupyter notebook support. The project uses PyTorch, torchvision, NumPy, Matplotlib, tqdm, ipykernel, and nbclient; the setup command pins the tested package versions.
