@@ -48,7 +48,38 @@ class BaselineTests(unittest.TestCase):
         zero_history = train_model(zero_model, loader, loader,
                                    num_epochs=1, use_cuda=False, lr=0.1, momentum=0.0)
         torch.testing.assert_close(default_model.weight, zero_model.weight)
-        self.assertEqual(default_history, zero_history)
+        # Timing varies between calls; the original loss/accuracy values must match.
+        for key in ('epoch', 'train_loss', 'train_accuracy', 'test_loss', 'test_accuracy'):
+            self.assertEqual(default_history[0][key], zero_history[0][key])
+
+    def test_final_only_evaluation_and_training_time(self):
+        model = torch.nn.Linear(1, 2)
+        loader = DataLoader(
+            TensorDataset(torch.ones(2, 1), torch.zeros(2, dtype=torch.long)),
+            batch_size=1,
+        )
+        # Four clock readings describe two training intervals of 2 and 3 seconds.
+        with patch('utils.time.perf_counter', side_effect=[10.0, 12.0, 20.0, 23.0]):
+            with patch.object(model, 'eval', wraps=model.eval) as evaluate:
+                history = train_model(model, loader, loader, num_epochs=2,
+                                      device='cpu', eval_every_epoch=False)
+        self.assertEqual(evaluate.call_count, 1)
+        self.assertIsNone(history[0]['test_accuracy'])
+        self.assertIsNone(history[0]['test_loss'])
+        self.assertIsNotNone(history[1]['test_accuracy'])
+        self.assertEqual([row['train_seconds'] for row in history], [2.0, 3.0])
+
+    def test_default_still_evaluates_each_epoch(self):
+        model = torch.nn.Linear(1, 2)
+        loader = DataLoader(
+            TensorDataset(torch.ones(2, 1), torch.zeros(2, dtype=torch.long)),
+            batch_size=1,
+        )
+        with patch.object(model, 'eval', wraps=model.eval) as evaluate:
+            history = train_model(model, loader, loader, num_epochs=2, device='cpu')
+        self.assertEqual(evaluate.call_count, 2)
+        self.assertTrue(all(row['test_accuracy'] is not None for row in history))
+        self.assertTrue(all(row['train_seconds'] >= 0 for row in history))
 
     # new code end
     def test_cpu_metrics_include_partial_batches_and_separate_losses(self):

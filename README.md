@@ -8,7 +8,7 @@
 2. Compare first-layer energy profiles, training-loss curves, test accuracy, and training time.
 3. Present the findings in a four-page IEEE report.
 
-The [experiment notebook](CNNs-First-Layer/optimizer_experiment.ipynb) contains the setup and six-run configuration scaffold; training and analysis are the next implementation steps.
+Section 4 of the [experiment notebook](CNNs-First-Layer/optimizer_experiment.ipynb) trains the configured models and saves their results; loading and analysis in sections 5–6 are next.
 
 ## Requirements
 

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from random import shuffle
+import time
 
 import numpy as np
 import torch
@@ -116,7 +117,8 @@ def get_patch_pca(train_loader, num_images=10000):
 # TODO: support configurable SGD momentum for the experiment.
 # Experiment change: momentum defaults to zero so original notebook calls stay compatible.
 def train_model(model, train_loader, test_loader, num_epochs=100,
-                use_cuda=None, lr=0.01, device=None, momentum=0.0):
+                use_cuda=None, lr=0.01, device=None, momentum=0.0,
+                eval_every_epoch=True):
     # An explicit device wins. The old flag still supports forcing CPU/CUDA;
     # otherwise prefer CUDA, then Apple MPS, then CPU.
     if device is None:
@@ -144,6 +146,14 @@ def train_model(model, train_loader, test_loader, num_epochs=100,
     for epoch in pbar:
         model.train()
         train_loss = train_correct = train_count = 0
+        # TODO: measure completed training work, excluding test evaluation.
+        # GPU operations are asynchronous, so wait before starting the timer.
+        if device.type == 'cuda':
+            torch.cuda.synchronize(device)
+        elif device.type == 'mps':
+            torch.mps.synchronize()
+        start_time = time.perf_counter()
+        # new code end
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad(set_to_none=True)
@@ -156,21 +166,36 @@ def train_model(model, train_loader, test_loader, num_epochs=100,
             train_correct += (logits.detach().argmax(1) == labels).sum().item()
             train_count += len(labels)
 
-        model.eval()
+        # Wait for the final training update before stopping the epoch timer.
+        if device.type == 'cuda':
+            torch.cuda.synchronize(device)
+        elif device.type == 'mps':
+            torch.mps.synchronize()
+        train_seconds = time.perf_counter() - start_time
+
+        # The original notebooks evaluate every epoch; the experiment only
+        # evaluates the final model so its test set is not used during training.
+        test_loss_value = test_accuracy = None
         test_loss = test_correct = test_count = 0
-        with torch.no_grad():
-            for images, labels in test_loader:
-                images, labels = images.to(device), labels.to(device)
-                logits = model(images)
-                test_loss += criterion(logits, labels).item() * len(labels)
-                test_correct += (logits.argmax(1) == labels).sum().item()
-                test_count += len(labels)
+        if eval_every_epoch or epoch == num_epochs - 1:
+            model.eval()
+            with torch.no_grad():
+                for images, labels in test_loader:
+                    images, labels = images.to(device), labels.to(device)
+                    logits = model(images)
+                    test_loss += criterion(logits, labels).item() * len(labels)
+                    test_correct += (logits.argmax(1) == labels).sum().item()
+                    test_count += len(labels)
+            test_loss_value = test_loss / test_count
+            test_accuracy = test_correct / test_count
+        # new code end
         history.append({
             'epoch': epoch + 1,
             'train_loss': train_loss / train_count,
             'train_accuracy': train_correct / train_count,
-            'test_loss': test_loss / test_count,
-            'test_accuracy': test_correct / test_count,
+            'test_loss': test_loss_value,
+            'test_accuracy': test_accuracy,
+            'train_seconds': train_seconds,
         })
         pbar.set_postfix(history[-1])
     return history
