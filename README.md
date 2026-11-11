@@ -8,8 +8,6 @@
 2. Compare first-layer energy profiles, training-loss curves, test accuracy, and training time.
 3. Present the findings in a four-page IEEE report.
 
-Section 4 of the [experiment notebook](CNNs-First-Layer/optimizer_experiment.ipynb) trains the configured models and saves their results; loading and analysis in sections 5–6 are next.
-
 ## Requirements
 
 Python 3.14, `uv`, and VS Code with Python/Jupyter notebook support. The project uses PyTorch, torchvision, NumPy, Matplotlib, tqdm, ipykernel, and nbclient; the setup command pins the tested package versions.
