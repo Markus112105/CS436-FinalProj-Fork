@@ -143,13 +143,17 @@ Setting $\mu=0$ gives plain SGD. If $g$ stays constant, $v$ converges to
 $g/(1-\mu)$, so $\mu=0.9$ takes a step up to 10 times larger at the same
 $\eta$.
 
-\subsection{Hypotheses}
-\begin{itemize}
-\item H1: With momentum, the energy profile stays consistent across seeds.
-\item H2: On the same seed, the two optimizers learn similar profiles.
-\item H3: Momentum reaches a higher test accuracy in 30 epochs.
-\item H4: Momentum does not noticeably increase the training time.
-\end{itemize}
+\subsection{Hypothesis}
+We test one hypothesis with four parts. Adding momentum 0.9 to SGD raises the
+test accuracy that VGG11-BN reaches on CIFAR-10 in 30 epochs, and it leaves
+the first-layer energy profile and the training time close to those of plain
+SGD.
+\begin{enumerate}
+\item With momentum, the energy profile stays consistent across seeds.
+\item On the same seed, the two optimizers learn similar profiles.
+\item Momentum reaches a higher test accuracy in 30 epochs.
+\item Momentum does not noticeably increase the training time.
+\end{enumerate}
 
 \section{Our Contribution}
 The original repository has one utility file and two notebooks. Its training
@@ -309,12 +313,12 @@ momentum ends at 0.022. Momentum passes the final loss of plain SGD at epoch
 to 99.5\% with momentum.
 
 \section{Discussion}
-\subsection{Hypotheses}
-The data support all four hypotheses. With momentum the profiles stay
-consistent across seeds, at 0.96 to 0.98 (H1). The two optimizers learn
-similar profiles on the same seed, at 0.95 to 0.99 (H2). Momentum gains 18.84
-to 27.34 points of test accuracy in 30 epochs (H3) and costs 1\% more training
-time (H4).
+\subsection{Hypothesis}
+The data support all four parts of the hypothesis. With momentum the profiles
+stay consistent across seeds, at 0.96 to 0.98 (part 1). The two optimizers
+learn similar profiles on the same seed, at 0.95 to 0.99 (part 2). Momentum
+gains 18.84 to 27.34 points of test accuracy in 30 epochs (part 3) and costs
+1\% more training time (part 4).
 
 \subsection{Comparison with the Original Paper}
 Our seed correlation for plain SGD is 0.92, below the 0.99 in
