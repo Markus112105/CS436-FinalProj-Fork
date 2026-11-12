@@ -37,7 +37,7 @@ if u want to redo the analysis without training, open the notebook and run secti
 
 ## Documentation
 
-The [report skeleton](docs/final_project_report.tex), [skeleton PDF](docs/final_project_report.pdf), [project requirements](docs/report_requirements.pdf), and [original paper](docs/original_paper.pdf) are in `docs/`. The skeleton has empty sections; the completed report must be four pages including references.
+The [report source](docs/final_project_report.tex), [report PDF](docs/final_project_report.pdf), [project requirements](docs/report_requirements.pdf), and [original paper](docs/original_paper.pdf) are in `docs/`.
 
 ## Attribution and contributions
 

@@ -1,44 +1,413 @@
-% IEEE report skeleton: write the paper after collecting and analyzing results.
-% The completed submission must be four pages, including references.
+% IEEE conference format. The completed submission must be four pages,
+% including references.
 \documentclass[conference]{IEEEtran}
 
-\title{Project Title}
-\author{\IEEEauthorblockN{Markus Massina and Michael Truong}
-\IEEEauthorblockA{CS 436 Final Project}}
+\usepackage{graphicx}
+\usepackage{url}
+
+\title{Does Momentum Change What CNNs Learn\\in the First Layer?}
+
+\author{\IEEEauthorblockN{Markus Massina}
+\IEEEauthorblockA{Binghamton University\\
+GitHub: Markus112105}
+\and
+\IEEEauthorblockN{Michael Truong}
+\IEEEauthorblockA{Binghamton University\\
+GitHub: Michael-Truong111}}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-% Summarize the question, method, measured results, and conclusion last.
+Chowers and Weiss showed that the first layer of a convolutional neural
+network learns a consistent energy profile across random seeds and
+architectures, and with random labels. They explained it with a formula
+derived for plain gradient descent, and their theory does not cover momentum.
+We ask whether adding momentum to SGD changes the first-layer energy profile,
+the test accuracy, or the training time of VGG11-BN on CIFAR-10. We trained
+six models for 30 epochs, three seeds with plain SGD and the same three seeds
+with momentum 0.9. Both runs of a seed share the same initial weights and
+batch order.
+Momentum raised mean test accuracy from 54.54\% to 78.56\% and took 1\% longer
+to train. The energy profiles stayed consistent across seeds, with a mean
+correlation of 0.92 for plain SGD and 0.97 with momentum. On the same seed,
+the profiles of the two optimizers had a correlation of 0.95 to 0.99. Momentum
+changed the training speed and the test accuracy, and the first-layer energy
+profile kept a correlation of at least 0.95 with the plain SGD profile.
 \end{abstract}
 
+\begin{IEEEkeywords}
+convolutional neural networks, first layer, energy profile, momentum,
+stochastic gradient descent, CIFAR-10
+\end{IEEEkeywords}
+
 \section{Introduction}
-% Introduce the research question and motivation.
+The first convolutional layer of a CNN applies its filters to the input
+pixels. In VGG11 each filter covers a $3\times3$ patch of three color
+channels. Chowers and Weiss \cite{chowers2023} measure this layer with an
+energy profile and report that the profile is consistent across training
+runs. On CIFAR-10, VGG11 models trained from different seeds have a
+profile correlation of 0.99, and a trained model has a correlation of $-0.13$
+with its own initialization. They also derive a formula for the profile of a
+linear CNN trained with gradient descent. The formula depends on the
+statistics of image patches, the step size, and the number of steps, and the
+labels do not appear in it.
+
+The derivation assumes plain gradient descent. The authors state that
+momentum, weight decay, and learning-rate schedules are outside their theory,
+and their comparison with pretrained models changes all three together
+\cite{chowers2023}. We isolate momentum, a standard addition to SGD for deep
+networks \cite{sutskever2013}. Our question is whether adding momentum 0.9 to
+SGD
+changes the first-layer energy profile, the test accuracy, or the training
+time of VGG11 with batch normalization (VGG11-BN)
+\cite{simonyan2015,ioffe2015} on CIFAR-10 \cite{krizhevsky2009}.
+
+We train six models for 30 epochs, three seeds for each optimizer, with the
+same initial weights and batch order within a seed. Momentum raises mean test
+accuracy from 54.54\% to 78.56\% and adds 1\% to the training time. On the
+same seed, the energy profiles of the two optimizers have a correlation of
+0.95 to 0.99.
 
 \section{Background}
-% Explain the original paper and relevant concepts in your own words.
+\subsection{Energy Profile}
+Let $u_1,\dots,u_{27}$ be the principal components of $3\times3\times3$
+patches taken from training images, and let $w_1,\dots,w_K$ be the first-layer
+filters, each flattened to 27 values. The energy along component $i$ is
+\begin{equation}
+e_i = \sqrt{\frac{1}{K}\sum_{k=1}^{K}\left(w_k^{\top}u_i\right)^2}.
+\label{eq:energy}
+\end{equation}
+The energy profile is the vector $(e_1,\dots,e_{27})$ divided by its largest
+entry. Reordering or rescaling the filters leaves the profile unchanged
+\cite{chowers2023}, so it can compare two networks that store the same filters
+in a different order. The similarity of two networks is the Pearson
+correlation between their profiles.
+
+\subsection{Reported Results}
+For VGG11 on CIFAR-10, \cite{chowers2023} reports a correlation of 0.99
+between seeds and $-0.13\pm0.18$ between a trained model and its
+initialization. The correlation is 0.87 between VGG11 and ResNet. It is
+$0.90\pm0.02$ between a model trained on the true labels and one trained on
+random labels. Random labels carry no class information.
+The authors conclude that the patch statistics and the optimizer set the
+profile, and that the labels have little effect.
+
+\subsection{Theory}
+The theory in \cite{chowers2023} covers a two-layer linear CNN trained with
+gradient descent on the squared loss, with step size $\eta$ for $t$ steps. The
+derived profile is
+\begin{equation}
+e_i \propto \lambda_i\,\frac{\left|1-(1-a_i)^t\right|}{a_i},
+\qquad a_i \propto \eta\lambda_i^2,
+\label{eq:formula}
+\end{equation}
+where $\lambda_i^2$ is the mean squared projection of the training patches on
+$u_i$. With $t$ fitted, this formula has a correlation of $0.94\pm0.01$ with
+the profile of VGG11 trained on CIFAR-10. As $t$ grows, the formula approaches
+a whitening transform, which removes the correlation between neighboring
+pixels \cite{chowers2023}.
+
+Equation~(\ref{eq:formula}) has no momentum term. The fitted formula has a
+correlation of 0.91 with a pretrained CIFAR-10 VGG11 and 0.69 with a
+pretrained ResNet20. Their training used momentum, weight decay, and a
+learning-rate schedule, and the authors point out that their theory covers
+none of the three \cite{chowers2023}.
 
 \section{Methodology}
-% Explain the original method and our modification, with citations.
+We keep the measurement of \cite{chowers2023} and change one argument of the
+optimizer.
+
+\subsection{Measurement}
+For each run we store the first-layer weights before training, $W_0$, and
+after training, $W_T$. We apply (\ref{eq:energy}) to the difference
+$W_T-W_0$, as the authors' code does, so the profile measures the change that
+training produced. VGG11-BN has $K=64$ first-layer filters. All six runs share
+one PCA basis.
+
+We compute nine correlations. Three are between seeds for plain SGD, three
+are between seeds for momentum, and three are between the two optimizers on
+the same seed. The first group repeats the seed comparison of \cite{chowers2023}. The
+third group isolates the effect of momentum, because the two runs of a seed
+differ only in $\mu$.
+
+\subsection{Optimizer}
+Plain SGD updates the weights $w$ with the minibatch gradient $g$ as
+$w \leftarrow w-\eta g$. SGD with momentum $\mu$ keeps a velocity $v$ and
+updates
+\begin{equation}
+v \leftarrow \mu v+g, \qquad w \leftarrow w-\eta v.
+\label{eq:momentum}
+\end{equation}
+Setting $\mu=0$ gives plain SGD. If $g$ stays constant, $v$ converges to
+$g/(1-\mu)$, so $\mu=0.9$ takes a step up to 10 times larger at the same
+$\eta$.
+
+\subsection{Hypotheses}
+\begin{itemize}
+\item H1: With momentum, the energy profile stays consistent across seeds.
+\item H2: On the same seed, the two optimizers learn similar profiles.
+\item H3: Momentum reaches a higher test accuracy in 30 epochs.
+\item H4: Momentum does not noticeably increase the training time.
+\end{itemize}
 
 \section{Our Contribution}
-% Describe actual implementation work and distinguish it from upstream code.
+The original repository has one utility file and two notebooks. Its training
+function, \texttt{train\_model}, uses plain SGD, requires a CUDA device, and
+returns no measurements.
+
+\subsection{Compatibility}
+We rewrote the utility file so the code selects a CUDA GPU, an Apple GPU, or
+the CPU, and no longer needs the torchmetrics package. \texttt{train\_model}
+now returns the loss and accuracy of every epoch on the training set and the
+test set. We moved the patch PCA from the notebooks into one function that
+accumulates a $27\times27$ matrix per batch, so it never stores the 9,000,000
+patches. We pinned the model definition \cite{chen2021} to one commit.
+
+\subsection{Experiment Options}
+We added three options to \texttt{train\_model}.
+\begin{enumerate}
+\item A \texttt{momentum} argument that we pass to the PyTorch SGD optimizer
+\cite{paszke2019}. The default is 0, which keeps plain SGD.
+\item A timer around the training part of each epoch. The timer waits for
+queued GPU work to finish before it starts and before it stops.
+\item An option to evaluate the test set only after the last epoch. The test
+set then plays no part in training, and evaluation time stays out of the
+measured time.
+\end{enumerate}
+Comments in the source mark these additions.
+
+\subsection{Tests and Notebook}
+We wrote nine unit tests. Four cover the three new options. Five cover the
+training metrics, the test loader, the PCA, the energy profile, and the
+formula fit.
+
+Our new notebook, \texttt{optimizer\_experiment.ipynb}, runs the six
+configurations and saves one file per run with the settings, software
+versions, per-epoch history, initial and final first-layer weights, and energy
+profile. It then checks the saved runs, computes the statistics in
+Table~\ref{tab:results}, and draws Fig.~\ref{fig:energy_and_loss}.
+
+M. Massina wrote the tests, the local setup, and notebook sections 1, 2, and
+5, and ran the experiment on Colab. M. Truong wrote notebook sections 3, 4, 6,
+and 7 and analyzed the results. Both authors planned the project.
 
 \section{Experimental Setup}
-% Document data, settings, matched seeds, hardware/software, and measurement protocol.
+\subsection{Data and Model}
+CIFAR-10 \cite{krizhevsky2009} has 50,000 training images and 10,000 test
+images of $32\times32$ pixels in 10 classes. We normalize each color channel
+and use no augmentation. The model is VGG11-BN from \cite{chen2021} at a
+pinned commit, with random initial weights.
+
+\subsection{Training}
+Every run uses the cross-entropy loss, learning rate 0.01, batch size 256, and
+30 epochs. We use no weight decay, no learning-rate schedule, and no Nesterov
+update. The only setting that differs is $\mu$, which is 0 or 0.9. We use
+seeds 436, 437, and 438. Before each run we reset the Python, NumPy, and
+PyTorch random number generators to the seed, so both optimizers start from
+identical weights. The notebook asserts this on the saved weights. A separate
+generator with the same seed shuffles the training data, so both optimizers
+see the same batches in the same order.
+
+The model, the 30 epochs, the learning rate, the batch size, and the 10,000
+PCA images follow the authors' notebook \texttt{vgg\_linear\_fit.ipynb}. The
+original training function uses SGD without momentum, so plain SGD is the
+original model in our comparison.
+
+\subsection{PCA Basis}
+We sample 10,000 training images with seed 436 and compute the 27 principal
+components of their $3\times3\times3$ patches. The basis uses no test images.
+
+\subsection{Hardware and Timing}
+We ran all six runs in one Google Colab session on one NVIDIA Tesla T4 GPU,
+with Python 3.13.16, PyTorch 2.14.1, and torchvision 0.29.1. The training time
+of a run is the sum of its 30 per-epoch training times. It excludes the data
+download, the PCA, and the test evaluation.
+
+\subsection{Metrics}
+We report the test accuracy after epoch 30 on the 10,000 test images, the
+training time, and the Pearson correlation between energy profiles. For
+accuracy and time we give the mean and sample standard deviation over three
+seeds.
 
 \section{Results}
-% Insert measured energy profiles, loss curves, correlations, and performance table.
+
+\begin{table}[t]
+\caption{Plain SGD (original) compared with SGD with momentum 0.9 (ours).
+VGG11-BN on CIFAR-10, 30 epochs, three seeds, one Tesla T4 GPU.
+Values are mean $\pm$ sample standard deviation.
+Correlations are between first-layer energy profiles.}
+\label{tab:results}
+\centering
+\begin{tabular}{lcc}
+\hline
+Measurement & Plain SGD & Momentum 0.9 \\
+\hline
+Test accuracy (\%) & $54.54 \pm 5.32$ & $78.56 \pm 0.98$ \\
+Training time (s) & $587.9 \pm 3.6$ & $593.6 \pm 4.9$ \\
+Correlation between seeds & 0.92 & 0.97 \\
+\quad lowest to highest & 0.89 to 0.97 & 0.96 to 0.98 \\
+\hline
+Correlation, SGD vs momentum & \multicolumn{2}{c}{0.95 to 0.99} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\caption{Results of each run after epoch 30.}
+\label{tab:runs}
+\centering
+\begin{tabular}{clccccc}
+\hline
+ & & Test & Train & Train & Test & Time \\
+Seed & Optimizer & acc. (\%) & acc. (\%) & loss & loss & (s) \\
+\hline
+436 & Plain SGD & 50.11 & 93.72 & 0.182 & 3.507 & 590.8 \\
+436 & Momentum & 77.45 & 99.00 & 0.031 & 1.298 & 598.6 \\
+437 & Plain SGD & 53.06 & 92.61 & 0.213 & 2.640 & 589.0 \\
+437 & Momentum & 78.95 & 99.51 & 0.017 & 1.212 & 588.7 \\
+438 & Plain SGD & 60.44 & 93.52 & 0.184 & 2.102 & 583.8 \\
+438 & Momentum & 79.28 & 99.45 & 0.018 & 1.228 & 593.4 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.94\textwidth]{energy_and_loss.pdf}
+\caption{The left panel shows the first-layer energy profiles of all six runs,
+one line per seed. The right panel shows the training loss per epoch, averaged
+over three seeds. The shaded band is one sample standard deviation.}
+\label{fig:energy_and_loss}
+\end{figure*}
+
+\subsection{Accuracy}
+Momentum has the higher test accuracy on every seed
+(Tables~\ref{tab:results} and~\ref{tab:runs}). The gain is 27.34, 25.89, and
+18.84 percentage points, with a mean of 24.02. The smallest gain is 3.5 times
+the standard deviation of plain SGD across seeds.
+
+\subsection{Training Time}
+Plain SGD takes 587.9~s on average and momentum takes 593.6~s, a ratio of
+1.01. The difference of 5.7~s is close to the spread across seeds, which is
+3.6~s and 4.9~s.
+
+\subsection{Energy Profiles}
+Between seeds, the profile correlations of plain SGD are 0.970, 0.887, and
+0.900. With momentum they are 0.960, 0.965, and 0.982. On the same seed, the
+correlations between plain SGD and momentum are 0.989, 0.983, and 0.950. In
+Fig.~\ref{fig:energy_and_loss} (left), five of the six profiles peak at
+component 8. The plain SGD run of seed 438 peaks at component 9, and it is
+part of the three lowest correlations, 0.887, 0.900, and 0.950.
+
+\subsection{Training Loss}
+At epochs 5, 10, and 20 the mean training loss of plain SGD is 1.881, 1.401,
+and 0.578, and the loss with momentum is 0.711, 0.245, and 0.051
+(Fig.~\ref{fig:energy_and_loss}, right). Plain SGD ends at 0.193 and
+momentum ends at 0.022. Momentum passes the final loss of plain SGD at epoch
+12. The final training accuracy is 92.6\% to 93.7\% for plain SGD and 99.0\%
+to 99.5\% with momentum.
 
 \section{Discussion}
-% Interpret results, compare with the paper, and explain limitations.
+\subsection{Hypotheses}
+The data support all four hypotheses. With momentum the profiles stay
+consistent across seeds, at 0.96 to 0.98 (H1). The two optimizers learn
+similar profiles on the same seed, at 0.95 to 0.99 (H2). Momentum gains 18.84
+to 27.34 points of test accuracy in 30 epochs (H3) and costs 1\% more training
+time (H4).
+
+\subsection{Comparison with the Original Paper}
+Our seed correlation for plain SGD is 0.92, below the 0.99 in
+\cite{chowers2023}. The plain SGD pair without seed 438 has 0.970, so one run
+accounts for 0.05 of the 0.07 difference. Our plain SGD runs had not
+converged. Their mean training loss was 0.193 at epoch 30, against 0.022 with
+momentum, and the momentum runs reached a seed correlation of 0.97. By
+(\ref{eq:formula}) the profile depends on the number of steps, so stopping at
+30 epochs could lower the correlation. The three plain SGD runs ended at
+similar training losses, 0.182 to 0.213, so training progress does not
+explain why seed 438 differs. We did not train plain SGD for longer, so we have not tested this
+explanation.
+
+The result agrees with the account in \cite{chowers2023} that the patch
+statistics set the profile. Momentum changes the size of each step and leaves
+the data unchanged. Our experiment does not extend (\ref{eq:formula}) to
+momentum.
+
+\subsection{Training Speed}
+Momentum reaches the final training loss of plain SGD in 12 of the 30 epochs,
+a factor of 2.5. The factor of 10 from (\ref{eq:momentum}) holds only when the
+gradient stays constant between steps, so we expect a smaller factor on
+minibatch gradients. The extra work per step is one multiplication and one
+addition per weight, which is consistent with the measured 1\% increase in
+training time.
+
+\subsection{Generalization Gap}
+Plain SGD has a training accuracy of 92.6\% to 93.7\% and a test accuracy of
+50.11\% to 60.44\%, with a test loss of 2.10 to 3.51. With momentum the test
+accuracy is 77.45\% to 79.28\% and the test loss is 1.21 to 1.30. We did not
+identify the cause of the larger gap under plain SGD. The accuracy gain in
+Table~\ref{tab:results} therefore includes this gap as well as the faster
+decrease of the training loss.
+
+\subsection{Limitations}
+We used three seeds, one learning rate, one momentum value, one model, one
+dataset, and 30 epochs. We tuned the learning rate for neither optimizer, so
+a different learning rate could change the accuracy gap. The training times
+come from one GPU.
+
+\subsection{Future Work}
+Training plain SGD until its loss reaches 0.022 would test whether its seed
+correlation rises from 0.92 toward the 0.99 in \cite{chowers2023}. Repeating
+the six runs on CIFAR-100, where \cite{chowers2023} reports 0.97 between
+seeds, would test a second dataset. Fitting (\ref{eq:formula}) to the profiles
+of both optimizers and comparing the fitted $t$ would show whether momentum
+acts like a larger number of plain gradient steps.
+
+\subsection{Conclusion}
+For VGG11-BN on CIFAR-10, momentum 0.9 raised test accuracy by 24.02 points
+at 1\% more training time. The first-layer energy profile kept a correlation
+of at least 0.95 with the plain SGD profile on every seed.
 
 \section*{Code Availability}
-% Original source: https://github.com/RheaChowers/CNNs-First-Layer
-% Project source: https://github.com/Markus112105/CS436-FinalProj-Fork
+\noindent Original code:\\
+\url{https://github.com/RheaChowers/CNNs-First-Layer}\\
+Our code:\\
+\url{https://github.com/Markus112105/CS436-FinalProj-Fork}
 
-\section*{References}
-% Replace this heading with the completed bibliography when writing the paper.
+\begin{thebibliography}{1}
+
+\bibitem{chowers2023}
+R. Chowers and Y. Weiss, ``What do CNNs learn in the first layer and why? A
+linear systems perspective,'' in \emph{Proc. 40th Int. Conf. Mach. Learn.
+(ICML)}, 2023.
+
+\bibitem{sutskever2013}
+I. Sutskever, J. Martens, G. Dahl, and G. Hinton, ``On the importance of
+initialization and momentum in deep learning,'' in \emph{Proc. 30th Int. Conf.
+Mach. Learn. (ICML)}, 2013.
+
+\bibitem{simonyan2015}
+K. Simonyan and A. Zisserman, ``Very deep convolutional networks for
+large-scale image recognition,'' in \emph{Proc. Int. Conf. Learn. Represent.
+(ICLR)}, 2015.
+
+\bibitem{ioffe2015}
+S. Ioffe and C. Szegedy, ``Batch normalization: Accelerating deep network
+training by reducing internal covariate shift,'' in \emph{Proc. 32nd Int. Conf.
+Mach. Learn. (ICML)}, 2015.
+
+\bibitem{krizhevsky2009}
+A. Krizhevsky, ``Learning multiple layers of features from tiny images,''
+Univ. Toronto, Toronto, ON, Canada, Tech. Rep., 2009.
+
+\bibitem{paszke2019}
+A. Paszke \emph{et al.}, ``PyTorch: An imperative style, high-performance deep
+learning library,'' in \emph{Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2019.
+
+\bibitem{chen2021}
+Y. Chen, ``PyTorch CIFAR models,'' GitHub repository. [Online]. Available:
+\url{https://github.com/chenyaofo/pytorch-cifar-models}
+
+\end{thebibliography}
 
 \end{document}
